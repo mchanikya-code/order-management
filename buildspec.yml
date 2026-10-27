@@ -1,3 +1,4 @@
+
 version: 0.2
 
 env:
@@ -21,15 +22,18 @@ phases:
   pre_build:
     commands:
       - export PATH="$HOME/go-sdk/go/bin:$PATH"
-      - echo "Go version:"
-      - go version
+      - echo "Checking project directory..."
+      - pwd
+      - ls -la
+      - echo "Checking Go module..."
+      - test -f go.mod || { echo "ERROR: go.mod not found in the current directory"; exit 1; }
       - echo "Downloading Go dependencies..."
       - go mod download
-      - echo "Checking formatting..."
+      - echo "Checking Go formatting..."
       - |
         UNFORMATTED=$(find . -type f -name '*.go' -not -path './vendor/*' -print0 | xargs -0 gofmt -l)
         if [ -n "$UNFORMATTED" ]; then
-          echo "These Go files need gofmt:"
+          echo "ERROR: These Go files need gofmt:"
           echo "$UNFORMATTED"
           exit 1
         fi
@@ -38,23 +42,36 @@ phases:
   build:
     commands:
       - export PATH="$HOME/go-sdk/go/bin:$PATH"
-      - echo "Running tests..."
-      - go test ./...
+      - echo "Running Go tests..."
+      - go test -v ./...
       - echo "Running go vet..."
       - go vet ./...
-      - echo "Building microservices..."
+      - echo "Creating build directory..."
       - mkdir -p build
+      - echo "Building API Gateway..."
       - go build -o build/api-gateway ./cmd/api-gateway
+      - echo "Building Auth Service..."
       - go build -o build/auth-service ./cmd/auth-service
+      - echo "Building Product Service..."
       - go build -o build/product-service ./cmd/product-service
+      - echo "Building Order Service..."
       - go build -o build/order-service ./cmd/order-service
+      - echo "Building Database Check..."
       - go build -o build/check-db-connected ./cmd/check-db-connected
+      - echo "Building Load Test..."
       - go build -o build/load-test ./cmd/load-test
+      - echo "All binaries built successfully."
 
   post_build:
     commands:
+      - echo "Checking build artifacts..."
+      - |
+        if [ ! -d build ]; then
+          echo "ERROR: build directory was not created."
+          exit 1
+        fi
+        ls -lh build/
       - echo "Build completed successfully."
-      - ls -lh build/
 
 artifacts:
   base-directory: build
