@@ -7,10 +7,14 @@ env:
     GOOS: "linux"
     GOARCH: "amd64"
     CGO_ENABLED: "0"
+    HOME: "/root"
+    GOCACHE: "/root/.cache/go-build"
+    GOPATH: "/root/go"
 
 phases:
   install:
     commands:
+      - 'mkdir -p "$GOCACHE" "$GOPATH/pkg/mod" "$HOME/go-sdk"'
       - 'echo "Installing Go ${GO_VERSION}..."'
       - 'curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz" -o /tmp/go.tar.gz'
       - 'rm -rf "$HOME/go-sdk"'
@@ -24,42 +28,35 @@ phases:
       - 'export PATH="$HOME/go-sdk/go/bin:$PATH"'
       - 'echo "Checking repository root..."'
       - 'pwd'
-      - 'ls -la'
-      - 'test -f go.mod || { echo "ERROR: go.mod is missing from the repository root"; exit 1; }'
-      - 'test -d cmd || { echo "ERROR: cmd directory is missing"; exit 1; }'
+      - 'test -f go.mod || { echo "ERROR: go.mod not found"; exit 1; }'
       - 'echo "Go environment:"'
-      - '"$HOME/go-sdk/go/bin/go" env GOOS GOARCH CGO_ENABLED GOTOOLCHAIN'
+      - '"$HOME/go-sdk/go/bin/go" env GOCACHE GOPATH GOOS GOARCH CGO_ENABLED'
       - 'echo "Downloading dependencies..."'
       - '"$HOME/go-sdk/go/bin/go" mod download'
       - 'echo "Checking Go formatting..."'
-      - 'UNFORMATTED=$(find . -type f -name "*.go" -not -path "./vendor/*" -print0 | xargs -0 "$HOME/go-sdk/go/bin/gofmt" -l); if [ -n "$UNFORMATTED" ]; then echo "ERROR: Go files need formatting:"; echo "$UNFORMATTED"; exit 1; fi'
-      - 'echo "Formatting check passed."'
+      - 'UNFORMATTED=$(find . -type f -name "*.go" -not -path "./vendor/*" -print0 | xargs -0 "$HOME/go-sdk/go/bin/gofmt" -l); if [ -n "$UNFORMATTED" ]; then echo "Files need formatting:"; echo "$UNFORMATTED"; exit 1; fi'
       - 'mkdir -p build'
+      - 'echo "Formatting check passed."'
 
   build:
     commands:
-      - 'echo "Running Go tests with detailed output..."'
+      - 'export PATH="$HOME/go-sdk/go/bin:$PATH"'
+      - 'mkdir -p "$GOCACHE" "$GOPATH/pkg/mod" build'
+      - 'echo "Running Go tests..."'
       - '"$HOME/go-sdk/go/bin/go" test -v ./...'
-      - 'echo "Go tests passed."'
       - 'echo "Running go vet..."'
       - '"$HOME/go-sdk/go/bin/go" vet ./...'
-      - 'echo "Building API Gateway..."'
       - '"$HOME/go-sdk/go/bin/go" build -o build/api-gateway ./cmd/api-gateway'
-      - 'echo "Building Auth Service..."'
       - '"$HOME/go-sdk/go/bin/go" build -o build/auth-service ./cmd/auth-service'
-      - 'echo "Building Product Service..."'
       - '"$HOME/go-sdk/go/bin/go" build -o build/product-service ./cmd/product-service'
-      - 'echo "Building Order Service..."'
       - '"$HOME/go-sdk/go/bin/go" build -o build/order-service ./cmd/order-service'
-      - 'echo "Building Database Check..."'
       - '"$HOME/go-sdk/go/bin/go" build -o build/check-db-connected ./cmd/check-db-connected'
-      - 'echo "Building Load Test..."'
       - '"$HOME/go-sdk/go/bin/go" build -o build/load-test ./cmd/load-test'
       - 'echo "All six binaries built successfully."'
 
   post_build:
     commands:
-      - 'if [ -d build ]; then echo "Build directory contents:"; ls -lh build/; else echo "Build directory is missing."; fi'
+      - 'ls -lh build/'
 
 artifacts:
   base-directory: build
