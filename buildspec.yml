@@ -19,19 +19,24 @@ phases:
       - export PATH="$HOME/go-sdk/go/bin:$PATH"
       - go version
 
-  
   pre_build:
     commands:
-      - 'export PATH="$HOME/go-sdk/go/bin:$PATH"'
-      - 'echo "Checking project directory..."'
-      - 'pwd'
-      - 'ls -la'
-      - 'echo "Downloading Go dependencies..."'
-      - 'go mod download'
-      - 'echo "Checking Go formatting..."'
-      - 'UNFORMATTED=$(find . -type f -name "*.go" -not -path "./vendor/*" -print0 | xargs -0 gofmt -l); if [ -n "$UNFORMATTED" ]; then echo "Files need formatting:"; echo "$UNFORMATTED"; exit 1; fi'
-      - 'echo "All Go files are formatted."'
-
+      - export PATH="$HOME/go-sdk/go/bin:$PATH"
+      - echo "Checking project directory..."
+      - pwd
+      - ls -la
+      - test -f go.mod || { echo "ERROR: go.mod not found"; exit 1; }
+      - echo "Downloading Go dependencies..."
+      - go mod download
+      - echo "Checking Go formatting..."
+      - |
+        UNFORMATTED=$(find . -type f -name '*.go' -not -path './vendor/*' -print0 | xargs -0 gofmt -l)
+        if [ -n "$UNFORMATTED" ]; then
+          echo "Files need formatting:"
+          echo "$UNFORMATTED"
+          exit 1
+        fi
+        echo "All Go files are formatted."
 
   build:
     commands:
@@ -58,14 +63,13 @@ phases:
 
   post_build:
     commands:
-      - echo "Checking build artifacts..."
       - |
-        if [ ! -d build ]; then
-          echo "ERROR: build directory was not created."
-          exit 1
+        if [ -d build ]; then
+          echo "Build artifacts:"
+          ls -lh build/
+        else
+          echo "Build directory missing; inspect the BUILD phase error."
         fi
-        ls -lh build/
-      - echo "Build completed successfully."
 
 artifacts:
   base-directory: build
