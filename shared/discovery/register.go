@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"order-management/config"
 	consulapi "github.com/hashicorp/consul/api"
+	"order-management/config"
 )
 
 // Register registers a service and its HTTP health check with Consul.

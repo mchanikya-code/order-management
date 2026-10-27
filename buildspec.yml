@@ -21,16 +21,19 @@ phases:
   pre_build:
     commands:
       - export PATH="$HOME/go-sdk/go/bin:$PATH"
+      - echo "Go version:"
+      - go version
       - echo "Downloading Go dependencies..."
       - go mod download
       - echo "Checking formatting..."
       - |
-        UNFORMATTED=$(gofmt -l $(find . -type f -name '*.go' -not -path './vendor/*'))
+        UNFORMATTED=$(find . -type f -name '*.go' -not -path './vendor/*' -print0 | xargs -0 gofmt -l)
         if [ -n "$UNFORMATTED" ]; then
           echo "These Go files need gofmt:"
           echo "$UNFORMATTED"
           exit 1
         fi
+        echo "All Go files are formatted."
 
   build:
     commands:
